@@ -4,7 +4,7 @@ category:     Language
 synopsis:     A library for the analysis and creation of Graphviz DOT files
 description:  A library for the analysis and creation of Graphviz DOT files.
 author:       Brian Lewis <brian@lorf.org>
-maintainer:   Brian Lewis <brian@lorf.org>
+maintainer:   Ben Gamari <ben@smart-cactus.org>
 copyright:    (c) 2009 Galois, Inc.
 license:      BSD3
 license-file: LICENSE
