@@ -1,5 +1,5 @@
 name:         language-dot
-version:      0.0.8
+version:      0.0.9
 category:     Language
 synopsis:     A library for the analysis and creation of Graphviz DOT files
 description:  A library for the analysis and creation of Graphviz DOT files.
@@ -9,8 +9,8 @@ copyright:    (c) 2009 Galois, Inc.
 license:      BSD3
 license-file: LICENSE
 
-cabal-version: >= 1.6
-build-type:    Custom
+cabal-version: >= 1.8
+build-type:    Simple
 
 extra-source-files:
   src/test.hs
@@ -20,8 +20,7 @@ flag executable
   default:     True
 
 library
-  hs-source-dirs:
-    src
+  hs-source-dirs: src
 
   exposed-modules:
     Language.Dot
@@ -36,8 +35,18 @@ library
     pretty  == 1.*
 
   ghc-options: -Wall
-  if impl(ghc >= 6.8)
-    ghc-options: -fwarn-tabs
+
+test-suite test
+  type: exitcode-stdio-1.0
+  main-is: test.hs
+  hs-source-dirs: src
+  ghc-options: -Wall
+  cpp-options: -DTEST
+  build-depends:
+    base    == 4.*,
+    mtl     == 1.* || == 2.*,
+    parsec  == 3.*,
+    pretty  == 1.*
 
 executable ppdot
   if flag(executable)
@@ -45,14 +54,15 @@ executable ppdot
   else
     buildable: False
 
-  hs-source-dirs:
-    src
-
   main-is: ppdot.hs
+  hs-source-dirs: src
+  build-depends:
+    base    == 4.*,
+    mtl     == 1.* || == 2.*,
+    parsec  == 3.*,
+    pretty  == 1.*
 
   ghc-options: -Wall
-  if impl(ghc >= 6.8)
-    ghc-options: -fwarn-tabs
 
 source-repository head
   type:     git
