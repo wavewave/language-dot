@@ -9,12 +9,12 @@ data Graph
 data GraphStrictness
   = StrictGraph
   | UnstrictGraph
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 data GraphDirectedness
   = DirectedGraph
   | UndirectedGraph
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 data Id
   = NameId    String
@@ -36,7 +36,7 @@ data AttributeStatementType
   = GraphAttributeStatement
   | NodeAttributeStatement
   | EdgeAttributeStatement
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 data Attribute
   = AttributeSetTrue  Id
@@ -71,7 +71,7 @@ data EdgeType
   = NoEdge
   | DirectedEdge
   | UndirectedEdge
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 data Xml
   = XmlEmptyTag XmlName [XmlAttribute]
