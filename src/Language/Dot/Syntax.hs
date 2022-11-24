@@ -2,6 +2,8 @@
 
 module Language.Dot.Syntax where
 
+import Data.Text (Text)
+
 data Graph
   = Graph GraphStrictness GraphDirectedness (Maybe Id) [Statement]
   deriving (Eq, Ord, Show)
@@ -17,8 +19,8 @@ data GraphDirectedness
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 data Id
-  = NameId    String
-  | StringId  String
+  = NameId    Text
+  | StringId  Text
   | IntegerId Integer
   | FloatId   Float
   | XmlId     Xml
@@ -76,11 +78,11 @@ data EdgeType
 data Xml
   = XmlEmptyTag XmlName [XmlAttribute]
   | XmlTag      XmlName [XmlAttribute] [Xml]
-  | XmlText     String
+  | XmlText     Text
   deriving (Eq, Ord, Show)
 
 data XmlName
-  = XmlName String
+  = XmlName Text
   deriving (Eq, Ord, Show)
 
 data XmlAttribute
@@ -88,5 +90,5 @@ data XmlAttribute
   deriving (Eq, Ord, Show)
 
 data XmlAttributeValue
-  = XmlAttributeValue String
+  = XmlAttributeValue Text
   deriving (Eq, Ord, Show)

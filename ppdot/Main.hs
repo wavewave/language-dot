@@ -5,6 +5,7 @@ import Control.Monad.Error (ErrorT(..), MonadError(..))
 import System.Environment  (getArgs, getProgName)
 import System.Exit         (exitFailure, exitSuccess)
 import System.IO           (hPutStrLn, stderr)
+import qualified Data.Text.IO as T
 
 import Language.Dot (parseDot, renderDot)
 
@@ -29,7 +30,7 @@ renderDotFile fp =
 
 renderDotFileET :: FilePath -> ErrorT String IO String
 renderDotFileET fp = do
-    contents <- readFile fp `liftCatch` show
+    contents <- T.readFile fp `liftCatch` show
     graph    <- parseDot fp contents `liftEither` show
     return $ renderDot graph
 

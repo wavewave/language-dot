@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Language.Dot.Pretty
   ( prettyPrintDot
   , renderDot
-  , PP(..)
   )
   where
 
@@ -13,128 +13,124 @@ import Prelude hiding ((<>))
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 import Numeric
-import Text.PrettyPrint
+import Prettyprinter
+import Prettyprinter.Render.String
 
 import Language.Dot.Syntax
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-prettyPrintDot :: Graph -> Doc
-prettyPrintDot = pp
+prettyPrintDot :: Graph -> Doc ()
+prettyPrintDot = pretty
 
 renderDot :: Graph -> String
-renderDot = render . pp
+renderDot = renderString . layoutPretty defaultLayoutOptions . pretty
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-class PP a where
-  pp :: a -> Doc
+instance Pretty Graph where
+  pretty (Graph s d mi ss) =
+      vcat [ pretty s <+> pp d <+> pp mi <+> lbrace
+           , indent' (vcat' ss)
+           , rbrace
+           ]
 
-instance (PP a) => PP (Maybe a) where
-  pp (Just v) = pp v
-  pp Nothing  = empty
+instance Pretty GraphStrictness where
+  pretty StrictGraph   = pretty "strict"
+  pretty UnstrictGraph = mempty
 
-instance PP Graph where
-  pp (Graph s d mi ss) = pp s <+> pp d <+> pp mi <+> lbrace $+$ indent (vcat' ss) $+$ rbrace
+instance Pretty GraphDirectedness where
+  pretty DirectedGraph   = pretty "digraph"
+  pretty UndirectedGraph = pretty "graph"
 
-instance PP GraphStrictness where
-  pp StrictGraph   = text "strict"
-  pp UnstrictGraph = empty
+instance Pretty Id where
+  pretty (NameId v)    = pretty v
+  pretty (StringId v)  = dquotes (pretty v)
+  pretty (IntegerId v) = pretty v
+  pretty (FloatId v)   = ffloat v
+  pretty (XmlId v)     = langle <> pp v <> rangle
 
-instance PP GraphDirectedness where
-  pp DirectedGraph   = text "digraph"
-  pp UndirectedGraph = text "graph"
+instance Pretty Statement where
+  pretty (NodeStatement ni as)       = pp ni <+> if not (null as) then brackets (hsep' as) else mempty
+  pretty (EdgeStatement es as)       = hsep' es <+> if not (null as) then brackets (hsep' as) else mempty
+  pretty (AttributeStatement t as)   = pp t <+> brackets (hsep' as)
+  pretty (AssignmentStatement i0 i1) = pp i0 <> equals <> pp i1
+  pretty (SubgraphStatement s)       = pp s
 
-instance PP Id where
-  pp (NameId v)    = text v
-  pp (StringId v)  = doubleQuotes (text v)
-  pp (IntegerId v) = integer v
-  pp (FloatId v)   = ffloat v
-  pp (XmlId v)     = langle <> pp v <> rangle
+instance Pretty AttributeStatementType where
+  pretty GraphAttributeStatement = pretty "graph"
+  pretty NodeAttributeStatement  = pretty "node"
+  pretty EdgeAttributeStatement  = pretty "edge"
 
-instance PP Statement where
-  pp (NodeStatement ni as)       = pp ni <+> if not (null as) then brackets (hsep' as) else empty
-  pp (EdgeStatement es as)       = hsep' es <+> if not (null as) then brackets (hsep' as) else empty
-  pp (AttributeStatement t as)   = pp t <+> brackets (hsep' as)
-  pp (AssignmentStatement i0 i1) = pp i0 <> equals <> pp i1
-  pp (SubgraphStatement s)       = pp s
+instance Pretty Attribute where
+  pretty (AttributeSetTrue i)      = pp i
+  pretty (AttributeSetValue i0 i1) = pp i0 <> equals <> pp i1
 
-instance PP AttributeStatementType where
-  pp GraphAttributeStatement = text "graph"
-  pp NodeAttributeStatement  = text "node"
-  pp EdgeAttributeStatement  = text "edge"
+instance Pretty NodeId where
+  pretty (NodeId i mp) = pp i <> pp mp
 
-instance PP Attribute where
-  pp (AttributeSetTrue i)      = pp i
-  pp (AttributeSetValue i0 i1) = pp i0 <> equals <> pp i1
+instance Pretty Port where
+  pretty (PortI i mc) = colon <> pp i <> maybe mempty ((colon <>) . pp) mc
+  pretty (PortC c)    = colon <> pp c
 
-instance PP NodeId where
-  pp (NodeId i mp) = pp i <> pp mp
+instance Pretty Compass where
+  pretty CompassN  = pretty "n"
+  pretty CompassE  = pretty "e"
+  pretty CompassS  = pretty "s"
+  pretty CompassW  = pretty "w"
+  pretty CompassNE = pretty "ne"
+  pretty CompassNW = pretty "nw"
+  pretty CompassSE = pretty "se"
+  pretty CompassSW = pretty "sw"
 
-instance PP Port where
-  pp (PortI i mc) = colon <> pp i <> maybe empty ((colon <>) . pp) mc
-  pp (PortC c)    = colon <> pp c
+instance Pretty Subgraph where
+  pretty (NewSubgraph mi ss) = vcat [ pretty "subgraph" <+> pp mi <+> lbrace
+                                    , indent' (vcat' ss)
+                                    , rbrace
+                                    ]
+  pretty (SubgraphRef i)     = pretty "subgraph" <+> pp i
 
-instance PP Compass where
-  pp CompassN  = text "n"
-  pp CompassE  = text "e"
-  pp CompassS  = text "s"
-  pp CompassW  = text "w"
-  pp CompassNE = text "ne"
-  pp CompassNW = text "nw"
-  pp CompassSE = text "se"
-  pp CompassSW = text "sw"
+instance Pretty Entity where
+  pretty (ENodeId et ni)   = pp et <+> pp ni
+  pretty (ESubgraph et sg) = pp et <+> pp sg
 
-instance PP Subgraph where
-  pp (NewSubgraph mi ss) = text "subgraph" <+> pp mi <+> lbrace $+$ indent (vcat' ss) $+$ rbrace
-  pp (SubgraphRef i)     = text "subgraph" <+> pp i
+instance Pretty EdgeType where
+  pretty NoEdge         = mempty
+  pretty DirectedEdge   = pretty "->"
+  pretty UndirectedEdge = pretty "--"
 
-instance PP Entity where
-  pp (ENodeId et ni)   = pp et <+> pp ni
-  pp (ESubgraph et sg) = pp et <+> pp sg
+instance Pretty Xml where
+  pretty (XmlEmptyTag n as) = langle <> pp n <+> hsep' as <> slash <> rangle
+  pretty (XmlTag n as xs)   = langle <> pp n <+> hsep' as <> rangle <> hcat' xs <> langle <> slash <> pp n <> rangle
+  pretty (XmlText t)        = pretty t
 
-instance PP EdgeType where
-  pp NoEdge         = empty
-  pp DirectedEdge   = text "->"
-  pp UndirectedEdge = text "--"
+instance Pretty XmlName where
+  pretty (XmlName n) = pretty n
 
-instance PP Xml where
-  pp (XmlEmptyTag n as) = langle <> pp n <+> hsep' as <> slash <> rangle
-  pp (XmlTag n as xs)   = langle <> pp n <+> hsep' as <> rangle <> hcat' xs <> langle <> slash <> pp n <> rangle
-  pp (XmlText t)        = text t
+instance Pretty XmlAttribute where
+  pretty (XmlAttribute n v) = pp n <> equals <> pp v
 
-instance PP XmlName where
-  pp (XmlName n) = text n
-
-instance PP XmlAttribute where
-  pp (XmlAttribute n v) = pp n <> equals <> pp v
-
-instance PP XmlAttributeValue where
-  pp (XmlAttributeValue v) = doubleQuotes (text v)
-
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-
-indent :: Doc -> Doc
-indent = nest 2
-
-hcat' :: (PP a) => [a] -> Doc
-hcat' = hcat . map pp
-
-hsep' :: (PP a) => [a] -> Doc
-hsep' = hsep . map pp
-
-vcat' :: (PP a) => [a] -> Doc
-vcat' = vcat . map pp
+instance Pretty XmlAttributeValue where
+  pretty (XmlAttributeValue v) = dquotes (pretty v)
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-langle :: Doc
-rangle :: Doc
-slash  :: Doc
+pp :: (Pretty a) => a -> Doc b
+pp = pretty
 
-langle = char '<'
-rangle = char '>'
-slash  = char '/'
+indent' :: Doc a -> Doc a
+indent' = indent 2
 
-ffloat :: Float -> Doc
-ffloat v = text (showFFloat Nothing v "")
+hcat' :: (Pretty a) => [a] -> Doc b
+hcat' = hcat . map pretty
+
+hsep' :: (Pretty a) => [a] -> Doc b
+hsep' = hsep . map pretty
+
+vcat' :: (Pretty a) => [a] -> Doc b
+vcat' = vcat . map pretty
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+ffloat :: Float -> Doc a
+ffloat v = pretty (showFFloat Nothing v "")

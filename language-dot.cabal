@@ -27,10 +27,11 @@ library
     Language.Dot.Syntax
 
   build-depends:
-    base    == 4.*,
-    mtl     == 1.* || == 2.*,
-    parsec  == 3.*,
-    pretty  == 1.*
+    base          == 4.*,
+    mtl           == 1.* || == 2.*,
+    parsec        == 3.*,
+    prettyprinter == 1.*,
+    text          >= 1.0 && < 3.0
 
   ghc-options: -Wall
   if impl(ghc >= 6.8)
@@ -48,6 +49,7 @@ executable ppdot
   build-depends:
     base    == 4.*,
     mtl     == 1.* || == 2.*,
+    text,
     language-dot
 
   ghc-options: -Wall

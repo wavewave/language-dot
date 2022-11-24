@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternGuards #-}
 
 module Language.Dot.Parser
   ( parseDot
@@ -11,16 +13,20 @@ module Language.Dot.Parser
   )
   where
 
+import Data.Functor.Identity (Identity)
 import Control.Applicative ((<$>), (<*>), (<*), (*>))
-import Control.Monad       (when)
-import Data.Char           (digitToInt, toLower)
+import Control.Monad       (when, void)
+import Data.Char           (digitToInt)
 import Data.List           (foldl')
 import Data.Maybe          (fromJust, fromMaybe, isJust)
 import Numeric             (readFloat)
 
+import Data.Text (Text)
+import qualified Data.Text as T
+
 import Text.Parsec
 import Text.Parsec.Language
-import Text.Parsec.String
+import Text.Parsec.Text
 import Text.Parsec.Token
 
 import Language.Dot.Syntax
@@ -29,19 +35,20 @@ import Language.Dot.Syntax
 
 parseDot
   :: String  -- ^ origin of the data, e.g., the name of a file
-  -> String  -- ^ DOT source code
+  -> Text    -- ^ DOT source code
   -> Either ParseError Graph
 parseDot origin =
     parse (whiteSpace' >> parseGraph) origin . preprocess
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-preprocess :: String -> String
+preprocess :: Text -> Text
 preprocess =
-    unlines . map commentPoundLines . lines
+    T.unlines . map commentPoundLines . T.lines
   where
-    commentPoundLines []         = []
-    commentPoundLines line@(c:_) = if c == '#' then "// " ++ line else line
+    commentPoundLines s
+      | Just ('#', rest) <- T.uncons s = "// " <> rest
+      | otherwise                      = s
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
@@ -236,7 +243,7 @@ parseCompass =
   where
     err = parserFail "invalid compass value"
     convert =
-        flip lookup table . stringToLower
+        flip lookup table . T.toLower
       where
         table =
           [ ("n",  CompassN),  ("e",  CompassE),  ("s",  CompassS),  ("w",  CompassW)
@@ -280,7 +287,7 @@ parseNameId =
 
 parseStringId :: Parser Id
 parseStringId =
-    ( StringId <$>
+    ( StringId . T.pack <$>
       lexeme' (char '"' *> manyTill stringChar (char '"'))
     )
     <?> "string literal"
@@ -394,7 +401,7 @@ parseXmlTagClose mn0 =
 
 parseXmlText :: Parser Xml
 parseXmlText =
-    ( XmlText <$>
+    ( XmlText . T.pack <$>
       anyChar `manyTill` lookAhead (   try (parseXmlEmptyTag >> return ())
                                    <|> try (parseXmlTag      >> return ())
                                    <|>      parseXmlTagClose Nothing
@@ -423,7 +430,7 @@ parseXmlAttributeValue =
 
 parseXmlName :: Parser XmlName
 parseXmlName =
-    ( XmlName <$>
+    ( XmlName . T.pack <$>
       ((:) <$> c0 <*> (many c1 <* whiteSpace'))
     )
     <?> "XML name"
@@ -437,32 +444,32 @@ parseXmlName =
 angles'        :: Parser a -> Parser a
 braces'        :: Parser a -> Parser a
 brackets'      :: Parser a -> Parser a
-colon'         :: Parser String
-comma'         :: Parser String
-identifier'    :: Parser String
+colon'         :: Parser ()
+comma'         :: Parser ()
+identifier'    :: Parser T.Text
 integer'       :: Parser Integer
 lexeme'        :: Parser a -> Parser a
 reserved'      :: String -> Parser ()
 reservedOp'    :: String -> Parser ()
-semi'          :: Parser String
-stringLiteral' :: Parser String
+semi'          :: Parser ()
+stringLiteral' :: Parser Text
 whiteSpace'    :: Parser ()
 
-angles'        = angles        lexer
-braces'        = braces        lexer
-brackets'      = brackets      lexer
-colon'         = colon         lexer
-comma'         = comma         lexer
-identifier'    = identifier    lexer
-integer'       = integer       lexer
-lexeme'        = lexeme        lexer
-reserved'      = reserved      lexer
-reservedOp'    = reservedOp    lexer
-semi'          = semi          lexer
-stringLiteral' = stringLiteral lexer
-whiteSpace'    = whiteSpace    lexer
+angles'        =             angles        lexer
+braces'        =             braces        lexer
+brackets'      =             brackets      lexer
+colon'         = void $      colon         lexer
+comma'         = void $      comma         lexer
+identifier'    = T.pack <$>  identifier    lexer
+integer'       =             integer       lexer
+lexeme'        =             lexeme        lexer
+reserved'      =             reserved      lexer
+reservedOp'    =             reservedOp    lexer
+semi'          = void $      semi          lexer
+stringLiteral' = T.pack <$>  stringLiteral lexer
+whiteSpace'    =             whiteSpace    lexer
 
-lexer :: TokenParser ()
+lexer :: GenTokenParser Text () Identity
 lexer =
     makeTokenParser dotDef
   where
@@ -480,7 +487,3 @@ lexer =
       , caseSensitive   = False
       }
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-
-stringToLower :: String -> String
-stringToLower = map toLower
